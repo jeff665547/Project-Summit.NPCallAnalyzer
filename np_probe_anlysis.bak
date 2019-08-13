@@ -1,0 +1,74 @@
+class NPProbeAnalysis:
+    
+    KEYS     = ['x', 'y']
+    USECOLS1 = ['probe_id', 'probe_seq_5p', 'ref', 'x', 'y']
+    USECOLS2 = ['x', 'y', 'mean']
+    CSS_AT   = {'color': 'green', 'alpha': 0.2 }
+    CSS_CG   = {'color': 'red'  , 'alpha': 0.2 }
+    CHANNELS = ['mean_g', 'mean_r']
+    LABEL_AT = 'AT'
+    LABEL_CG = 'CG'
+    
+    def __init__(self, annot):
+        self.annot = annot
+
+    def __call__(self, import_dir):  
+        This = type(self)
+        
+        # create result directory
+        result_dir = import_dir / 'npcall'
+        if not result_dir.exists():
+            result_dir.mkdir(exist_ok = True)
+        
+        # merge data and annotations
+        channels = ['BF', 'CY3', 'CY5']
+        path = import_dir / 'grid' / 'channels' / '{}' / 'heatmap.csv'
+        df = pd.merge(
+            pd.read_csv(str(path).format(channels[1]), usecols = This.USECOLS2),
+            pd.read_csv(str(path).format(channels[2]), usecols = This.USECOLS2),
+            left_on = This.KEYS, right_on = This.KEYS, suffixes = ('_g', '_r')
+        )        
+        ps = pd.merge(self.annot, df, left_on = This.KEYS, right_on = This.KEYS)
+
+        # apply linear classification
+        lda = LinearDiscriminantAnalysis()
+        inputs = np.log2(ps[This.CHANNELS].values + 1e-16)
+        lda.fit(inputs, ps['label'].values)
+        outputs = lda.predict(inputs)
+        ps.loc[:, 'prediction'] = outputs
+        ps.loc[:, 'decision'] = outputs == ps['label'].values
+        
+        # save results
+        ps.to_csv(str(result_dir / 'ps.csv'), index = 0)
+        
+        # calculate NP call accuracy
+        acc = sum(ps['decision'].values) / len(ps)
+        
+        # draw scatter plot
+        at = ps[ps.label == 'AT']
+        cg = ps[ps.label == 'CG']
+        
+        text = 'ACC: {:.2f}%'.format(acc * 100)
+        fig = pt.figure(figsize = (12, 12))
+        ax = fig.add_subplot(1,1,1)
+        ax.scatter(np.log2(cg.mean_g.values), np.log2(cg.mean_r.values), 4, **This.CSS_CG)
+        ax.scatter(np.log2(at.mean_g.values), np.log2(at.mean_r.values), 4, **This.CSS_AT)
+        ax.set_xlabel('{} intensities'.format(channels[1]))
+        ax.set_ylabel('{} intensities'.format(channels[2]))
+        ax.legend(['C/G type', 'A/T type'])
+        ax.text(
+            np.array([0.03, 0.97]).dot(ax.get_xlim()),
+            np.array([0.13, 0.87]).dot(ax.get_ylim()),
+            text,
+            verticalalignment = 'top',
+            horizontalalignment = 'right'
+        )
+        fig.set_tight_layout(True)
+        fig.savefig(str(result_dir / 'scatter.png'), dpi = 200)
+        pt.close(fig)
+        
+        # done
+        with open(str(result_dir / 'COMPLETE'), 'w'):
+            pass
+        
+        return [ '{:.2f}'.format(100 * acc), str(result_dir / 'scatter.png') ]
