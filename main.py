@@ -9,8 +9,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pathlib import Path
 from itertools import product
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.mixture import GaussianMixture
 from imgproc_utils import quantile_norm, auto_contrast
+from npcall_viz import visualize_npcall_distribution
 
 colorscale = {
     'green': [
@@ -395,44 +397,48 @@ class Application(tk.Frame):
                     columns = ['mean_g', 'mean_r']
                     ps.loc[:, columns] = quantile_norm(ps[columns].values)
                 
-                print('  -', 'apply linear discriminant analysis')
-                model = LinearDiscriminantAnalysis()
+                print('  -', 'apply log transformation')
                 columns = ['mean_g', 'mean_r']
                 inputs = np.log2(ps[columns].values)
-                model.fit(inputs, ps['actual'].values)
-                outputs = model.predict(inputs)
-                ps.loc[:, 'predicted'] = outputs
-                ps.loc[:, 'num_fails'] = np.array(outputs != ps['actual'].values, dtype = int)
-                ps.loc[:, 'confidence'] = np.abs(inputs.dot(model.coef_.transpose())[:,0] + model.intercept_)
-                ps.to_csv(str(output_dir / 'ps.csv'), index = 0)
-                accuracy = 1 - sum(ps['num_fails'].values) / len(ps)
-                record.append('{:.2f}'.format(accuracy * 100))
+                
+                print('  -', 'apply linear discriminant analysis')
+#                model = LinearDiscriminantAnalysis()
+
+
+#                model.fit(inputs, ps['actual'].values)
+#                outputs = model.predict(inputs)
+#                ps.loc[:, 'predicted'] = outputs
+#                ps.loc[:, 'num_fails'] = np.array(outputs != ps['actual'].values, dtype = int)
+#                ps.loc[:, 'confidence'] = np.abs(inputs.dot(model.coef_.transpose())[:,0] + model.intercept_)
+#                ps.to_csv(str(output_dir / 'ps.csv'), index = 0)
+#                accuracy = 1 - sum(ps['num_fails'].values) / len(ps)
+#                record.append('{:.2f}'.format(accuracy * 100))
                 
                 print('  -', 'export a heatmap of NP failed calls')
-                self.draw_np_failed_calls(ps, chip_shape, annot_np, output_dir)
+#                self.draw_np_failed_calls(ps, chip_shape, annot_np, output_dir)
                 
                 print('  -', 'export group failed calls by replicates')
-                res = ps.groupby(['probe_seq_5p'])['num_fails'].sum()
-                res.to_csv(str(output_dir / 'rep_errors.csv'), header = False)
+#                res = ps.groupby(['probe_seq_5p'])['num_fails'].sum()
+#                res.to_csv(str(output_dir / 'rep_errors.csv'), header = False)
                 
                 print('  -', 'export topography')
-                r_values = df['mean_r'].values.reshape(chip_shape)
-                g_values = df['mean_g'].values.reshape(chip_shape)
-                c1,c2 = model.coef_[0]
-                calib = lambda x: 2.0 ** (- (np.log2(x) * c1 + model.intercept_[0]) / c2)
-                if self.flags['LDA/NP'].get() == 1:
-                    print('  -', 'apply linear normalization')
-                    g_values = calib(g_values)
-                draw_topography(
-                    intensity = np.stack((g_values, r_values)),
-                    result_path = output_dir / 'topography.html',
-                    auto_thres = 5000,
-                    auto_open = self.auto_open,
-                )
-                tp = df.copy(True)
-                tp.loc[:, 'mean_g'] = g_values.ravel()
-                tp.loc[:, 'mean_r'] = r_values.ravel()
-                tp.to_csv(str(output_dir / 'topography.csv'), index = 0)
+#                r_values = df['mean_r'].values.reshape(chip_shape)
+#                g_values = df['mean_g'].values.reshape(chip_shape)
+#                c1,c2 = model.coef_[0]
+#                calib = lambda x: 2.0 ** (- (np.log2(x) * c1 + model.intercept_[0]) / c2)
+#                if self.flags['LDA/NP'].get() == 1:
+#                    print('  -', 'apply linear normalization')
+#                    g_values = calib(g_values)
+#                draw_topography(
+#                    intensity = np.stack((g_values, r_values)),
+#                    result_path = output_dir / 'topography.html',
+#                    auto_thres = 5000,
+#                    auto_open = self.auto_open,
+#                )
+#                tp = df.copy(True)
+#                tp.loc[:, 'mean_g'] = g_values.ravel()
+#                tp.loc[:, 'mean_r'] = r_values.ravel()
+#                tp.to_csv(str(output_dir / 'topography.csv'), index = 0)
                 
 #                print('  -', 're-fetch NP probe intensities')
 #                ps = pd.merge(annot_np, df, on = keys)
@@ -442,32 +448,62 @@ class Application(tk.Frame):
 #                    ps.loc[:, columns] = quantile_norm(ps[columns].values)
                 
                 print('  -', 'export scatter plot')
-                css_at = {'color': 'green', 'alpha': 0.2 }
-                css_cg = {'color': 'red'  , 'alpha': 0.2 }
-                at = ps[ps.actual == 'AT']
-                cg = ps[ps.actual == 'CG']
-                text = 'ACC: {:.2f}%'.format(accuracy * 100)
-                fig = pt.figure(figsize = (12, 12))
-                ax = fig.add_subplot(1,1,1)                
-                ax.scatter(np.log2(at.mean_g.values), np.log2(at.mean_r.values), 4, **css_at)
-                ax.scatter(np.log2(cg.mean_g.values), np.log2(cg.mean_r.values), 4, **css_cg)
-                xmin, xmax = min(ps.mean_g.values), max(ps.mean_g.values)
-                ax.plot(np.log2([xmin, xmax]), np.log2([calib(xmin), calib(xmax)]), '-b')
-                ax.set_xlabel('{} intensities'.format(channels[1]))
-                ax.set_ylabel('{} intensities'.format(channels[2]))
-                ax.legend(['Decision boundary', 'C/G type', 'A/T type'])
-                ax.text(
-                    np.array([0.03, 0.97]).dot(ax.get_xlim()),
-                    np.array([0.13, 0.87]).dot(ax.get_ylim()),
-                    text,
-                    verticalalignment = 'top',
-                    horizontalalignment = 'right'
-                )
-                fig.set_tight_layout(True)
-                fig.savefig(str(output_dir / 'scatter.png'), dpi = 200)
-                pt.close(fig)
+#                css_at = {'color': 'green', 'alpha': 0.2 }
+#                css_cg = {'color': 'red'  , 'alpha': 0.2 }
+#                at = ps[ps.actual == 'AT']
+#                cg = ps[ps.actual == 'CG']
+#                text = 'ACC: {:.2f}%'.format(accuracy * 100)
+#                fig = pt.figure(figsize = (12, 12))
+#                ax = fig.add_subplot(1,1,1)                
+#                ax.scatter(np.log2(at.mean_g.values), np.log2(at.mean_r.values), 4, **css_at)
+#                ax.scatter(np.log2(cg.mean_g.values), np.log2(cg.mean_r.values), 4, **css_cg)
+#                xmin, xmax = min(ps.mean_g.values), max(ps.mean_g.values)
+#                ax.plot(np.log2([xmin, xmax]), np.log2([calib(xmin), calib(xmax)]), '-b')
+#                ax.set_xlabel('{} intensities'.format(channels[1]))
+#                ax.set_ylabel('{} intensities'.format(channels[2]))
+#                ax.legend(['Decision boundary', 'C/G type', 'A/T type'])
+#                ax.text(
+#                    np.array([0.03, 0.97]).dot(ax.get_xlim()),
+#                    np.array([0.13, 0.87]).dot(ax.get_ylim()),
+#                    text,
+#                    verticalalignment = 'top',
+#                    horizontalalignment = 'right'
+#                )
+#                fig.set_tight_layout(True)
+#                fig.savefig(str(output_dir / 'scatter.png'), dpi = 200)
+#                pt.close(fig)
+#                record.append(str(output_dir / 'scatter.png'))
                 
-                record.append(str(output_dir / 'scatter.png'))
+                targets = ps.actual.values
+                for key in ['QDA', 'GMM']:
+                    print('  -', 'apply', key)
+                    if key == 'gmm':
+                        model = GaussianMixture(
+                            n_components = 2,
+                            means_init = np.diag(inputs.mean(axis = 0)),
+                            warm_start = True,
+                            tol = 1e-6
+                        )
+                        model.fit(inputs)
+                        outputs = model.predict(inputs)
+                        means = model.means_
+                        covariances = model.covariances_                        
+                    else:
+                        model = QuadraticDiscriminantAnalysis(
+                            store_covariance = True
+                        )
+                        model.fit(inputs, targets)
+                        outputs = model.predict(inputs)
+                        means = model.means_
+                        covariances = np.array(model.covariance_)
+                    visualize_npcall_distribution(
+                        inputs,
+                        outputs,
+                        targets,
+                        means,
+                        covariances,
+                        export_path = str(output_dir / 'scatter.{}.png'.format(key)),
+                    )                
                 
                 # draw scatter plot
                 writer.writerow(record)
