@@ -11,59 +11,78 @@ def calculate_decision_function(inputs, means, covariances):
         s = (z ** 2).sum(axis = 0) + 2 * np.log(L.diagonal()).sum()
         if i == 0: scores = s
         else: scores -= s
-    return scores, np.where(
-        scores > 0,
-        1 / (1 + np.exp(-scores)),
-        np.exp(scores) / (1 + np.exp(scores))
-    )
+    
+    probs = []
+    for score in scores:
+        if score > 0:
+            t = np.exp(-score)
+            probs.append(1 / (1 + t))
+        else:
+            t = np.exp(score)
+            probs.append(t / (1 + t))
+
+    return scores, np.array(probs)
 
 def visualize_npcall_distribution(
     inputs,
     outputs,
     targets,
+    labels,
     means,
     covariances,
     title = None,
     export_path = Path('.'),
     margin = [ 0.025, 0.975 ],
-    confidence = [ 0.95 ]
+    confidence = [ 0.95 ],
+    figsize = (8,8)
 ):
-    fig = pt.figure(figsize = (10, 10), dpi = 100)
+    fig = pt.figure(figsize = figsize)
     ax = fig.add_subplot(1,1,1)
     
     # evaluate statistics
     scores, probs = calculate_decision_function(inputs, means, covariances)
     failures = outputs != targets
-    nocalls = (probs > margin[0]) & (probs < margin[1])
-    labels = np.unique(targets)
+    nocalls  = (probs > margin[0]) & (probs < margin[1])
     
     # draw scatter plot of data
-    colors = ['green','red']
-    for color, selection in zip(colors, [targets == label for label in labels]):
-        ax.scatter(inputs[selection,0], inputs[selection,1], marker = ',', s = 3, c = color, alpha = 0.2)
+    for label, color in labels:
+        selection = targets == label
+        ax.scatter(
+            inputs[selection,0],
+            inputs[selection,1],
+            s = 3,
+            c = color,
+            marker = ',',
+            alpha = 0.2
+        )
     
     # draw failed calls and no calls
     errors = failures & ~nocalls
     ax.scatter(inputs[nocalls,0], inputs[nocalls,1], marker = 's', s = 5, c = 'gray')
     ax.scatter(inputs[errors ,0], inputs[errors ,1], marker = 'x', s = 12, c = 'blue', alpha = 0.5)
-    xmin, ymin = np.floor(inputs.min(axis = 0))
-    xmax, ymax = np.ceil (inputs.max(axis = 0))
+    xmin, ymin = 7.5, 7.5 # np.floor(inputs.min(axis = 0))
+    xmax, ymax = 12, 12 # np.ceil (inputs.max(axis = 0))
     #xmax = ymax = max(xmax, ymax)
     #xmin = ymin = min(xmin, ymin)
     
     # set labels
-    ax.set_xlabel('channel 0')
-    ax.set_ylabel('channel 1')
+    ax.set_xlabel('channel {}'.format(labels[0][0]))
+    ax.set_ylabel('channel {}'.format(labels[1][0]))
     ax.set_xlim(xmin, xmax + 0.5)
     ax.set_ylim(ymin, ymax + 0.5)
     ax.set_xticks(np.arange(xmin, xmax + 1))
     ax.set_yticks(np.arange(ymin, ymax + 1))
-    ax.legend(['Type 0', 'Type 1', 'No call', 'Error'])
+    ax.legend([
+        '{}-type'.format(labels[0][0]),
+        '{}-type'.format(labels[1][0]),
+        'No call',
+        'Error'
+    ])
     if title is not None:
         ax.set_title(title)
     
     # draw contour
-    size = 201, 201
+    size = 401, 401
     xx, yy = np.meshgrid(
         np.linspace(xmin, xmax + 0.5, size[1]),
         np.linspace(ymin, ymax + 0.5, size[0]),
@@ -76,7 +95,8 @@ def visualize_npcall_distribution(
     # draw Gaussian models
     stdevs  = []
     vectors = []
-    for mean, covariance, color in zip(means, covariances, colors):
+    indexes = np.argsort([ np.arctan2(*mean[::-1]) for mean in means ])
+    for mean, covariance, idx in zip(means, covariances, indexes):
         eigvals, eigvecs = np.linalg.eig(covariance)
         indexes = eigvals.argsort()[::-1]
         eigvals = eigvals[indexes]
@@ -92,7 +112,7 @@ def visualize_npcall_distribution(
                 height = np.sqrt(eigvals[1] * factor) * 2,
                 angle  = np.degrees(np.arctan2(*eigvecs[::-1,0])),
                 fill   = False,
-                edgecolor = color
+                edgecolor = labels[idx][1]
             ))
         for diff in (np.sqrt(eigvals) * eigvecs).transpose():
             ax.add_patch(FancyArrowPatch(
@@ -143,6 +163,7 @@ def visualize_npcall_distribution(
         va = 'top',
     )
     ax.set_aspect('equal')
+    fig.set_tight_layout(True)
     fig.savefig(str(export_path), dpi = 200)
     # fig.show()
     pt.close(fig)

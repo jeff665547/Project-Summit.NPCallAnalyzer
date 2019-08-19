@@ -3,5 +3,5 @@
     "annot_path": "C:/Git/data/Cent_M015_C88_annot.tab",
     "import_dir": "C:/Git/data/20190402_1NIF880-23-08",
     "export_dir": "C:/Git/results",
-    "auto_open": false
+    "auto_open": true
 }
