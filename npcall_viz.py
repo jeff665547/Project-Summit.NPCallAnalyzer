@@ -23,6 +23,9 @@ def calculate_decision_function(inputs, means, covariances):
 
     return scores, np.array(probs)
 
+#TODO
+# configurable xylimits: { auto, manual } x { x, y } x { min, max }
+
 def visualize_npcall_distribution(
     inputs,
     outputs,
@@ -58,34 +61,34 @@ def visualize_npcall_distribution(
     
     # draw failed calls and no calls
     errors = failures & ~nocalls
-    ax.scatter(inputs[nocalls,0], inputs[nocalls,1], marker = 's', s = 5, c = 'gray')
+    ax.scatter(inputs[nocalls,0], inputs[nocalls,1], marker = 's', s = 5 , c = 'gray')
     ax.scatter(inputs[errors ,0], inputs[errors ,1], marker = 'x', s = 12, c = 'blue', alpha = 0.5)
-    xmin, ymin = 7.5, 7.5 # np.floor(inputs.min(axis = 0))
-    xmax, ymax = 12, 12 # np.ceil (inputs.max(axis = 0))
-    #xmax = ymax = max(xmax, ymax)
-    #xmin = ymin = min(xmin, ymin)
+    xmin, ymin = np.floor(inputs.min(axis = 0))
+    xmax, ymax = np.ceil (inputs.max(axis = 0))
+#    xmax = ymax = max(xmax, ymax)
+#    xmin = ymin = min(xmin, ymin)
     
     # set labels
     ax.set_xlabel('channel {}'.format(labels[0][0]))
     ax.set_ylabel('channel {}'.format(labels[1][0]))
-    ax.set_xlim(xmin, xmax + 0.5)
-    ax.set_ylim(ymin, ymax + 0.5)
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
     ax.set_xticks(np.arange(xmin, xmax + 1))
     ax.set_yticks(np.arange(ymin, ymax + 1))
-    ax.legend([
-        '{}-type'.format(labels[0][0]),
-        '{}-type'.format(labels[1][0]),
-        'No call',
-        'Error'
-    ])
+#    ax.legend([
+#        '{}-type'.format(labels[0][0]),
+#        '{}-type'.format(labels[1][0]),
+#        'No call',
+#        'Error'
+#    ])
     if title is not None:
         ax.set_title(title)
     
     # draw contour
-    size = 401, 401
+    size = 501, 501
     xx, yy = np.meshgrid(
-        np.linspace(xmin, xmax + 0.5, size[1]),
-        np.linspace(ymin, ymax + 0.5, size[0]),
+        np.linspace(xmin, xmax, size[1]),
+        np.linspace(ymin, ymax, size[0]),
     )
     tt = np.stack((xx.ravel(), yy.ravel()), axis = 1)
     _, zz = calculate_decision_function(tt, means, covariances)
@@ -136,8 +139,8 @@ def visualize_npcall_distribution(
         sum(failures & ~nocalls) / (len(inputs) - sum(nocalls)), 
     ]) * 100
     ax.text(
-        (xmax + 0.5) * (1 - 0.985) + 0.985 * xmin,
-        (ymax + 0.5) * (1 - 0.015) + 0.015 * ymin,
+        xmax * (1 - 0.985) + 0.985 * xmin,
+        ymax * (1 - 0.015) + 0.015 * ymin,
         '\n'.join([
             'Call rate = {:.1f}%',
             'Accuracy = {:.1f}%',
