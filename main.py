@@ -2,15 +2,14 @@
 import sys, os, traceback, json, csv
 import subprocess, concurrent.futures as cf
 import tkinter as tk, tkfilebrowser as tkbrowser
-import numpy as np
-import matplotlib.pyplot as pt
-import pandas as pd
+import numpy as np, matplotlib.pyplot as pt, pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pathlib import Path
 from itertools import product
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.mixture import GaussianMixture
+
 from imgproc_utils import quantile_norm, auto_contrast
 from npcall_viz import visualize_npcall_distribution
 
@@ -104,11 +103,22 @@ def draw_topography(
     fig.write_html(
         str(result_path),
         auto_open = auto_open,
-#        config = {
-#            'scrollZoom': True,
-#        }
     )
 
+def __dfs(u, visited, neighbors, items):
+    visited.add(u)
+    items.append(u)
+    for v in neighbors(u):
+        if v not in visited:
+            __dfs(v, visited, neighbors, items)
+
+def partition_via_dfs(vertices, neighbors):
+    visited = set()
+    for v in vertices:
+        if v not in visited:
+            items = []
+            __dfs(v, visited, neighbors, items)
+            yield items
 
 
 #%%
@@ -124,7 +134,8 @@ class SummitGrid:
             str(self.binary_path),
             '-i', str(import_dir),
             '-o', str(export_dir),
-            '-n', '1',
+            '-n', '3',
+            # '-d', '6',
             '--marker_append',
             '--no_bgp',
         ],
@@ -149,11 +160,11 @@ class Application(tk.Frame):
                 raise OSError('Summit.Grid not found: {}'.format(str(path)))
             
             # configure path to annotation file
-            path = Path(opts['annot_path'])
-            if path.exists():
-                self.annot_path = path
-            else:
-                raise OSError('Annotation file not found: {}'.format(str(path)))
+#            path = Path(opts['annot_path'])
+#            if path.exists():
+#                self.annot_path = path
+#            else:
+#                raise OSError('Annotation file not found: {}'.format(str(path)))
             
             # configure export directory
             export_dir = Path(opts['export_dir'])
@@ -307,7 +318,6 @@ class Application(tk.Frame):
         print('complete\n')
     
     def draw_np_failed_calls(self, ps, shape, annot_np, output_dir):
-        yrng = np.unique(annot_np['y'].values)
         cnts = ps.groupby(['x','y'])['num_fails'].sum() # ps
         matx = np.ones(shape, int) * -1
         for (x, y), c in cnts.iteritems():
@@ -317,7 +327,11 @@ class Application(tk.Frame):
             cols = 1,
             vertical_spacing = 0.05,
         )
-        for row, rng in enumerate([ yrng[:13], yrng[13:26], yrng[26:] ], 1):
+        
+        y_values = np.unique(annot_np['y'].values)
+        neighbors = lambda u: (v for v in [u - 1, u + 1] if u in y_values)
+        for row, rng in enumerate(partition_via_dfs(y_values, neighbors), 1): #banff
+        # for row, rng in enumerate([ yrng[:5], yrng[5:10], yrng[10:] ], 1): #yz01
             ymin, ymax = min(rng), max(rng) + 1
             fig.add_trace(
                 go.Heatmap(
@@ -349,10 +363,7 @@ class Application(tk.Frame):
         if len(import_dirs) == 0:
             return
         
-        print('load annotations')
-        columns = ['probe_id', 'x', 'y', 'probe_seq_5p', 'ref']
-        annot = pd.read_csv(str(self.annot_path), usecols = columns)
-        annot.y = 495 - annot.y
+        annots = {}
         
         print('for each sample')
         with open(str(export_dir / 'npcall.csv'), 'w', newline = '') as f:
@@ -367,6 +378,19 @@ class Application(tk.Frame):
                 
                 print('  -', 'get sample information')
                 chip_name, chip_shape, channels = This.get_sample_info(import_dir)
+                
+                if chip_name not in annots:
+                    print('  -', 'load annotations')
+                    with open(self.config_file) as f:
+                        opts = json.load(f)
+                        info = opts['annotation'][chip_name]
+                        columns = ['probe_id', 'x', 'y'] + list(info['cols'].keys())
+                        annot = pd.read_csv(info['path'], usecols = columns)
+                        annot = annot.rename(columns = info['cols'])
+                        annot.y = chip_shape[1] - annot.y - 1
+                        annots[chip_name] = annot
+                else:
+                    annot = annots[chip_name]
                 
                 print('  -', 'merge channels')
                 columns = ['x', 'y', 'mean']
@@ -396,11 +420,26 @@ class Application(tk.Frame):
                     print('  -', 'apply quantile normalization to NP probes')
                     columns = ['mean_g', 'mean_r']
                     ps.loc[:, columns] = quantile_norm(ps[columns].values)
-                
-                print('  -', 'apply log transformation')
+
+#                bc = True
+#                inc_na = True
+#                
+#                if bc:
+#                    eps = 1e-4
+#                    columns = ['mean_g', 'mean_r']
+#                    value0 = ps[columns[0]].values - np.percentile(ps[columns[0]].values, 20)
+#                    value1 = ps[columns[1]].values - np.percentile(ps[columns[1]].values, 40)
+#                    ps.loc[:, columns[0]] = np.maximum(eps, value0)
+#                    ps.loc[:, columns[1]] = np.maximum(eps, value1)
+#                    nnz = (value0 > eps) & (value1 > eps)
+#                    columns = ['mean_g', 'mean_r']
+#                    inputs  = np.log2(ps.loc[nnz, columns].values)
+#                    targets = ps.loc[nnz,'actual'].values
+#                else:
+                    
                 columns = ['mean_g', 'mean_r']
-                inputs  = np.log2(ps[columns].values)
-                targets = ps.actual.values
+                inputs  = np.log2(ps.loc[:, columns].values)
+                targets = ps.loc[:, 'actual'].values
                 
                 print('  -', 'apply linear discriminant analysis')
                 model = LinearDiscriminantAnalysis()
@@ -417,7 +456,7 @@ class Application(tk.Frame):
                 self.draw_np_failed_calls(ps, chip_shape, annot_np, output_dir)
                 
                 print('  -', 'export group failed calls by replicates')
-                res = ps.groupby(['probe_seq_5p'])['num_fails'].sum()
+                res = ps.groupby(['seq'])['num_fails'].sum()
                 res.to_csv(str(output_dir / 'rep_errors.csv'), header = False)
                 
                 print('  -', 'export topography')
@@ -474,7 +513,7 @@ class Application(tk.Frame):
                 record.append(str(output_dir / 'scatter.LDA.png'))
                 
                 
-                for key in ['QDA', 'GMM']:
+                for key in ['QDA']:
                     print('  -', 'apply', key)
                     if key == 'GMM':
                         means_init = np.diag(inputs.mean(axis = 0)) + 5
@@ -495,7 +534,12 @@ class Application(tk.Frame):
                     else:
                         title = 'Results of NP call by using supervised clustering (QDA)'
                         model = QuadraticDiscriminantAnalysis(store_covariance = True)
-                        model.fit(inputs, targets)                        
+                        model.fit(inputs, targets)
+                        
+#                        if inc_na:
+#                            inputs  = np.log2(ps.loc[:,columns].values)
+#                            targets = ps.loc[:,'actual'].values
+                        
                         outputs = model.predict(inputs)
                         means = model.means_
                         covariances = np.array(model.covariance_)
@@ -521,20 +565,28 @@ class Application(tk.Frame):
         
     
     def apply_cross_analysis(self, import_dirs):
+        This = type(self)
         import_dirs = list(import_dirs)
         export_dir  = Path(self.export_dir['text'])
         if len(import_dirs) == 0:
             return
         
+        print('get sample information')
+        chip_name, chip_shape, channels = This.get_sample_info(import_dirs[0])
+        
         print('load annotations')
-        columns = ['probe_id', 'x', 'y', 'probe_seq_5p', 'ref']
-        annot = pd.read_csv(str(self.annot_path), usecols = columns)
-        annot.y = 495 - annot.y
+        with open(self.config_file) as f:
+            opts = json.load(f)
+            info = opts['annotation'][chip_name]
+            columns = ['probe_id', 'x', 'y'] + list(info['cols'].keys())
+            annot = pd.read_csv(info['path'], usecols = columns)
+            annot = annot.rename(columns = info['cols'])
+            annot.y = chip_shape[1] - annot.y - 1
         
         print('export topography')
         keys = ['y', 'x']
         sels = ['mean_g', 'mean_r']
-        size = 496, 496, -1
+        size = chip_shape + (-1,)
         df = pd.concat([
             pd.read_csv(str(import_dir / 'indiv' / 'topography.csv'))
             for import_dir in import_dirs
@@ -565,7 +617,7 @@ class Application(tk.Frame):
             for import_dir in import_dirs
         ])
         num_fails = df.groupby(keys)['num_fails'].sum().reset_index(['x','y'])        
-        self.draw_np_failed_calls(num_fails, (496,496), annot_np, export_dir)
+        self.draw_np_failed_calls(num_fails, chip_shape, annot_np, export_dir)
         
         print('  -', 'analyze replicate error probes')
         rep = pd.concat([
