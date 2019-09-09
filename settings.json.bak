@@ -1,7 +1,23 @@
 {
-    "summit_grid": "C:/Git/Summit.Grid_v1.0.4/bin/summit-app-grid.exe",
-    "annot_path": "C:/Git/data/Cent_M015_C88_annot.tab",
+    "summit_grid": "C:/Git/Summit.Grid_v1.0.6/bin/summit-app-grid.exe",
     "import_dir": "C:/Git/data/20190402_1NIF880-23-08",
     "export_dir": "C:/Git/results",
-    "auto_open": true
+    "auto_open": true,
+	
+	"annotation": {
+		"banff": {
+			"path": "C:/Git/data/Cent_M015_C88_annot.tab",
+			"cols": {
+				"probe_seq_5p": "seq",
+				"ref": "ref"
+			}
+		},
+		"yz01": {
+			"path": "C:/Git/data/YZ-01_np_annot.tab",
+			"cols": {
+				"final_probe_seq": "seq",
+				"REF": "ref"
+			}
+		}
+	}
 }
