@@ -4,6 +4,14 @@ import matplotlib.pyplot as pt
 from matplotlib.patches import Ellipse, FancyArrowPatch, ArrowStyle
 from pathlib import Path
 
+def calculate_standard_dqc(at, cg):
+    good_at = np.sum(at['contrast'] > cg['contrast'].mean() + 2 * cg['contrast'].std())
+    good_cg = np.sum(cg['contrast'] < at['contrast'].mean() - 2 * at['contrast'].std())
+    return good_at / len(at), good_cg / len(cg)
+
+# print('SD(AT,CG) = ({:.4f}, {:.4f})'.format(*calc_standard_dqc(cntrl_at, cntrl_cg)))
+# print('SD(AT,CG) = ({:.4f}, {:.4f})'.format(*calc_standard_dqc(treat_at, treat_cg)))
+
 def calculate_decision_function(inputs, means, covariances):
     for i, (mean, covariance) in enumerate(zip(means, covariances)):
         L = np.linalg.cholesky(covariance)
@@ -37,7 +45,8 @@ def visualize_npcall_distribution(
     export_path = Path('.'),
     margin = [ 0.025, 0.975 ],
     confidence = [ 0.95 ],
-    figsize = (8,8)
+    figsize = (8,8),
+    fontsize = 12,
 ):
     fig = pt.figure(figsize = figsize)
     ax = fig.add_subplot(1,1,1)
@@ -69,8 +78,8 @@ def visualize_npcall_distribution(
 #    xmin = ymin = min(xmin, ymin)
     
     # set labels
-    ax.set_xlabel('channel {}'.format(labels[0][0]))
-    ax.set_ylabel('channel {}'.format(labels[1][0]))
+    ax.set_xlabel('channel {}'.format(labels[0][0]), fontsize = fontsize)
+    ax.set_ylabel('channel {}'.format(labels[1][0]), fontsize = fontsize)
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
     ax.set_xticks(np.arange(xmin, xmax + 1))
@@ -82,7 +91,7 @@ def visualize_npcall_distribution(
 #        'Error'
 #    ])
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(title, fontsize = fontsize)
     
     # draw contour
     size = 501, 501
@@ -138,6 +147,15 @@ def visualize_npcall_distribution(
         sum(failures |  nocalls) / len(inputs),
         sum(failures & ~nocalls) / (len(inputs) - sum(nocalls)), 
     ]) * 100
+    
+    # calcuate standard DQC
+    si = np.exp(inputs)
+    contrast = (si[:,0] - si[:,1]) / (si[:,0] + si[:,1])
+    cg = contrast[targets == labels[0][0]]
+    at = contrast[targets == labels[1][0]]
+    good_at = np.count_nonzero(at < cg.mean() - 2 * cg.std()) / len(at)
+    good_cg = np.count_nonzero(cg > at.mean() + 2 * at.std()) / len(cg)
+    
     ax.text(
         xmax * (1 - 0.985) + 0.985 * xmin,
         ymax * (1 - 0.015) + 0.015 * ymin,
@@ -146,6 +164,7 @@ def visualize_npcall_distribution(
             'Accuracy = {:.1f}%',
             'Accuracy (inc. no calls) = {:.1f}%',
             'Accuracy (exc. no calls) = {:.1f}%',
+            'DQC(CG,AT) = {:.2f}, {:.2f}',
             'Angle b/w clusters = {:.1f} degrees',
             'Separation index = {:.2f}',
             'Mean.0 = {:.0f}, {:.0f}',
@@ -155,6 +174,7 @@ def visualize_npcall_distribution(
         ]).format(
             (1 - sum(nocalls) / len(inputs)) * 100,
             *accuracies,
+            good_cg, good_at,
             np.degrees(np.arccos(np.clip(np.dot(*vectors), -1, 1))),
             w.dot(means[0] - means[1]) ** 2 / w.dot(covariances.sum(axis = 0)).dot(w),
             2 ** means[0][0], 2 ** means[0][1],
@@ -164,9 +184,22 @@ def visualize_npcall_distribution(
         linespacing = 1.5,
         ha = 'left',
         va = 'top',
+        fontsize = fontsize,
     )
     ax.set_aspect('equal')
     fig.set_tight_layout(True)
     fig.savefig(str(export_path), dpi = 200)
     # fig.show()
+    pt.close(fig)
+    
+    fig = pt.figure(figsize = figsize)
+    ax = fig.add_subplot(1,1,1)
+    ax.hist(cg, bins = 201, range = (-1, 1), color = labels[0][1], alpha = 0.5, density = True)
+    ax.hist(at, bins = 201, range = (-1, 1), color = labels[1][1], alpha = 0.5, density = True)
+    ax.set_xlabel('Contrast', fontsize = fontsize)
+    ax.set_ylabel('Probability density', fontsize = fontsize)
+    ax.set_title('DQC (CG = {:.2f} / AT = {:.2f})'.format(good_cg, good_at), fontsize = fontsize)
+    ax.legend(['{}-type'.format(labels[0][0]), '{}-type'.format(labels[1][0])])
+    fig.set_tight_layout(True)
+    fig.savefig(str(export_path.parent / 'contrast_distr.png'), dpi = 200)
     pt.close(fig)

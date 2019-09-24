@@ -171,7 +171,10 @@ class Application(tk.Frame):
             export_dir.mkdir(exist_ok = True)
             
             # configure auto open
-            self.auto_open = opts['auto_open']        
+            self.auto_open = opts['auto_open']
+            
+            # configure font size
+            self.font_size = opts['font_size']
         
         print('build UI components')
         This = type(self)
@@ -420,6 +423,8 @@ class Application(tk.Frame):
                     print('  -', 'apply quantile normalization to NP probes')
                     columns = ['mean_g', 'mean_r']
                     ps.loc[:, columns] = quantile_norm(ps[columns].values)
+                
+                # ps.loc[:, 'contrast'] = (ps.mean_g - ps.mean_r) / (ps.mean_g + ps.mean_r)
 
 #                bc = True
 #                inc_na = True
@@ -437,9 +442,10 @@ class Application(tk.Frame):
 #                    targets = ps.loc[nnz,'actual'].values
 #                else:
                     
-                columns = ['mean_g', 'mean_r']
-                inputs  = np.log2(ps.loc[:, columns].values)
-                targets = ps.loc[:, 'actual'].values
+                columns  = ['mean_g', 'mean_r']
+                inputs   = np.log2(ps.loc[:, columns].values)
+                targets  = ps.loc[:, 'actual'].values
+                # contrast = ps.loc[:, 'contrast'].values
                 
                 print('  -', 'apply linear discriminant analysis')
                 model = LinearDiscriminantAnalysis()
@@ -552,7 +558,8 @@ class Application(tk.Frame):
                         means,
                         covariances,
                         export_path = path,
-                        title = title
+                        title = title,
+                        fontsize = self.font_size
                     )                
                 
                 # draw scatter plot
