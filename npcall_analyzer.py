@@ -11,7 +11,9 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticD
 from sklearn.mixture import GaussianMixture
 
 from imgproc_utils import quantile_norm, auto_contrast
-from npcall_viz import visualize_npcall_distribution
+from npcall_viz import visualize_npcall_distribution, visualize_npcall_degrade
+from bg_ann import polyt_chrome_ann, AM1_AM3_AM5_ann
+from bgann_analysis import each_chip_statistics, each_chip_plots
 
 colorscale = {
     'green': [
@@ -122,8 +124,6 @@ def partition_via_dfs(vertices, neighbors):
 
 
 #%%
-
-
 class SummitGrid:
     
     def __init__(self, binary_path):
@@ -145,7 +145,7 @@ class Application(tk.Frame):
     
     PADDING_SIZE = 3
     LISTBOX_SIZE = (100, 30)   
-    
+
     def __init__(self, master = None, config_file = None):
         print('parse settings.json')
         self.config_file = config_file
@@ -191,7 +191,7 @@ class Application(tk.Frame):
             tk.Button(ctrl, text = 'Cross analysis', command = self.handle_cross_analysis),
             tk.Button(ctrl, text = 'Indiv analysis', command = self.handle_indiv_analysis),
             tk.Button(ctrl, text = 'Summit Grid'   , command = self.handle_summit_grid),
-        ]    
+        ]
         for button in self.buttons[:2]:
             button.pack(padx = This.PADDING_SIZE, side = tk.LEFT)
         self.export_dir = tk.Label(ctrl, text = str(export_dir))
@@ -220,11 +220,11 @@ class Application(tk.Frame):
         self.listbox.pack(pady = This.PADDING_SIZE, padx = This.PADDING_SIZE, side = tk.LEFT)
         
         print('Initialization complete')
-        
+    
     
     def selection(self):
         return map(Path, map(self.listbox.get, self.listbox.curselection()))    
-     
+    
     @staticmethod
     def get_directory_from_config(opts, key):
         try:
@@ -367,6 +367,7 @@ class Application(tk.Frame):
             return
         
         annots = {}
+        bg_annots = {}
         
         print('for each sample')
         with open(str(export_dir / 'npcall.csv'), 'w', newline = '') as f:
@@ -419,6 +420,38 @@ class Application(tk.Frame):
                 keys = ['x','y']
                 ps = pd.merge(annot_np, df, on = keys)
                 
+                print('  -', 'fetch AM1, AM3 (AM5), Chrome, PolyT probe annotations')
+                if chip_name not in bg_annots:
+                    with open(self.config_file) as f:
+                        opts = json.load(f)
+                        file_path = opts['annotation']['banff']['path'].split("/")
+                        file_path.pop()
+                        file_path = '/'.join(file_path)
+                
+                    p_c_ann = polyt_chrome_ann(file_path)[chip_name]
+                    am_ann = AM1_AM3_AM5_ann()[chip_name]
+                    bg_annot = dict(PolyT_Chrome = p_c_ann, AM = am_ann)
+                    
+                    bg_annots[chip_name] = bg_annot
+                
+                else:
+                    
+                    bg_annot = bg_annots[chip_name]
+
+                print('  -', 'fetch AM1, AM3 (AM5), Chrome, PolyT probe intensities')
+                keys = ['x','y']
+                temp = pd.merge(annot_np, df, on = keys, how = 'outer')
+                all_df = pd.merge(temp, bg_annot["PolyT_Chrome"], on = keys, how = 'left', suffixes = ('', '_bg'))
+                all_df = pd.merge(all_df, bg_annot["AM"], on = keys, how = 'left', suffixes = ('', '_AM'))
+                all_df.loc[pd.isna(all_df.ref), 'ref'] = all_df.loc[pd.isna(all_df.ref), 'ref_bg']
+                all_df.loc[pd.isna(all_df.ref), 'ref'] = all_df.loc[pd.isna(all_df.ref), 'ref_AM']
+                all_df = all_df.drop(['ref_bg', 'ref_AM'], axis = 1)
+                del temp
+
+                print('  -', 'export analysis for AM1, AM3 (AM5), Chrome, PolyT probes')
+                each_chip_plots(All = all_df, path_to_output = output_dir, chip_name = chip_name)
+                each_chip_statistics(All = all_df, path_to_output = output_dir, chip_name = chip_name)                
+                
                 if self.flags['QN/NP'].get() == 1:
                     print('  -', 'apply quantile normalization to NP probes')
                     columns = ['mean_g', 'mean_r']
@@ -441,7 +474,7 @@ class Application(tk.Frame):
 #                    inputs  = np.log2(ps.loc[nnz, columns].values)
 #                    targets = ps.loc[nnz,'actual'].values
 #                else:
-                    
+                
                 columns  = ['mean_g', 'mean_r']
                 inputs   = np.log2(ps.loc[:, columns].values)
                 targets  = ps.loc[:, 'actual'].values
@@ -454,7 +487,7 @@ class Application(tk.Frame):
                 ps.loc[:, 'predicted'] = outputs
                 ps.loc[:, 'num_fails'] = np.array(outputs != ps['actual'].values, dtype = int)
                 ps.loc[:, 'confidence'] = np.abs(inputs.dot(model.coef_.transpose())[:,0] + model.intercept_)
-                ps.to_csv(str(output_dir / 'ps.csv'), index = 0)
+                # ps.to_csv(str(output_dir / 'ps.csv'), index = 0)
                 accuracy = 1 - sum(ps['num_fails'].values) / len(ps)
                 record.append('{:.2f}'.format(accuracy * 100))
                 
@@ -560,13 +593,27 @@ class Application(tk.Frame):
                         export_path = path,
                         title = title,
                         fontsize = self.font_size
-                    )                
+                    )
+                    path = output_dir / 'scatter.{}.degrade.png'.format(key)
+                    visualize_npcall_degrade(
+                        inputs,
+                        outputs,
+                        targets,
+                        list(zip(('CG','AT'), ('green','red'))),
+                        means,
+                        covariances,
+                        export_path = path,
+                        title = title,
+                        fontsize = self.font_size
+                    )
                 
                 # draw scatter plot
                 writer.writerow(record)
                 
                 with open(str(output_dir / 'COMPLETE'), 'w'):
                     pass
+                
+                
                 
         print('complete\n')
         
@@ -664,5 +711,3 @@ if __name__ == '__main__':
     finally:
         # os.system('pause')
         pass
-
-        

@@ -7,6 +7,7 @@ def quantile_norm(data):
         rank[temp[:,i],i] = np.arange(data.shape[0])
     return np.sort(data, axis = 0).mean(axis = 1)[rank]
 
+# Adjust the brightness of the heatmap color
 def auto_contrast(images, thres = 40000, bins = 256):  
     image = images[0] if isinstance(images, list) else images
     if image.dtype == np.uint8:
