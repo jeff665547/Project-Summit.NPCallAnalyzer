@@ -3,8 +3,10 @@ import sys, os, traceback, json, csv
 import subprocess, concurrent.futures as cf
 import tkinter as tk, tkfilebrowser as tkbrowser
 import numpy as np, matplotlib.pyplot as pt, pandas as pd
-import plotly.graph_objects as go
+from _plotly_future_ import v4_subplots
+from plotly import graph_objs as go
 from plotly.subplots import make_subplots
+import plotly.io as pio
 from pathlib import Path
 from itertools import product
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
@@ -102,7 +104,8 @@ def draw_topography(
             ]
         )
     )
-    fig.write_html(
+    pio.write_html(
+        fig,
         str(result_path),
         auto_open = auto_open,
     )
@@ -123,7 +126,7 @@ def partition_via_dfs(vertices, neighbors):
             yield items
 
 
-#%%
+
 class SummitGrid:
     
     def __init__(self, binary_path):
@@ -345,16 +348,17 @@ class Application(tk.Frame):
                 row = row,
                 col = 1,
             )
-            fig.update_layout(**{
+            fig.layout.update(**{
                 'xaxis{}'.format(row): dict(side = "bottom"),
                 'yaxis{}'.format(row): dict(autorange = 'reversed')
             })
-        fig.update_layout(
+        fig.layout.update(
             autosize = False,
             width    = 500 * 10,
             height   = 700,
         )
-        fig.write_html(
+        pio.write_html(
+            fig,
             str(output_dir / 'failure_map.html'),
             auto_open = self.auto_open,
         )
@@ -428,7 +432,7 @@ class Application(tk.Frame):
                         file_path.pop()
                         file_path = '/'.join(file_path)
                 
-                    p_c_ann = polyt_chrome_ann(file_path)[chip_name]
+                    p_c_ann = polyt_chrome_ann()[chip_name]
                     am_ann = AM1_AM3_AM5_ann()[chip_name]
                     bg_annot = dict(PolyT_Chrome = p_c_ann, AM = am_ann)
                     

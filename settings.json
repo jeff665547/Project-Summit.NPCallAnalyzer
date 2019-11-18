@@ -1,19 +1,19 @@
 {
-    "summit_grid": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Microarray/Summit.NPCallAnalyzer/Summit.Grid_v1.0.11-dev-msvc/bin/summit-app-grid.exe",
-    "import_dir": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Microarray/Summit.NPCallAnalyzer/data",
-    "export_dir": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Microarray/Summit.NPCallAnalyzer/results",
+    "summit_grid": "C:/Users/jeff/Desktop/Summit.Grid_v1.0.10-dev_msvc/bin/summit-app-grid.exe",
+    "import_dir": "C:/Users/jeff/Desktop/Data",
+    "export_dir": "C:/Users/jeff/Desktop/result",
     "auto_open": false,
     "font_size": 16,
     "annotation": {
         "banff": {
-            "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Microarray/Summit.NPCallAnalyzer/data/annotations/Cent_M015_C88_annot.tab",
+            "path": "C:/Users/jeff/Desktop/Data/Cent_M015_C88_annot.tab",
             "cols": {
                 "probe_seq_5p": "seq",
                 "ref": "ref"
             }
         },
         "yz01": {
-            "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Microarray/Summit.NPCallAnalyzer/data/annotations/YZ-01_np_annot.tab",
+            "path": "C:/Users/jeff/Desktop/Data/YZ-01_np_annot.tab",
             "cols": {
                 "final_probe_seq": "seq",
                 "REF": "ref"

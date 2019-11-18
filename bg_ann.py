@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 import json
+import os
 
 
-# file_path = "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Microarray/Summit.NPCallAnalyzer/data/annotations"
+def polyt_chrome_ann():
 
-def polyt_chrome_ann(file_path):
+    file_path = "/".join(os.path.abspath(__file__).split("\\")[:-1])
+
     with open('{}/aruco_db.json'.format(file_path)) as inner_marker:
             inner = json.load(inner_marker)
             marker_detail = inner['DICT_6X6_250']['bitmap_list']
