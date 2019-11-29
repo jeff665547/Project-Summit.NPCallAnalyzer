@@ -21,6 +21,7 @@ def calculate_decision_function(inputs, means, covariances):
         s = (z ** 2).sum(axis = 0) + 2 * np.log(L.diagonal()).sum()
         if i == 0: scores = s
         else: scores -= s
+    scores *= 0.5
     
     probs = []
     for score in scores:
@@ -145,10 +146,15 @@ def visualize_npcall_distribution(
     
     # annotate statistics
     w = np.linalg.solve(covariances.sum(axis = 0), means[0] - means[1])
+#    print(sum(failures))
+#    print(sum(failures |  nocalls))
+#    print(sum(failures & ~nocalls))
+#    print(len(inputs) - sum(nocalls))
+    
     accuracies = 100 - np.array([
         sum(failures) / len(inputs),
         sum(failures |  nocalls) / len(inputs),
-        sum(failures & ~nocalls) / (len(inputs) - sum(nocalls)), 
+        sum(failures & ~nocalls) / (1e-8 + len(inputs) - sum(nocalls)), 
     ]) * 100
     
     # calcuate standard DQC
