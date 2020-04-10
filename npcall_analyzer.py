@@ -3,7 +3,7 @@ import sys, os, traceback, json, csv
 import subprocess, concurrent.futures as cf
 import tkinter as tk, tkfilebrowser as tkbrowser
 import numpy as np, matplotlib.pyplot as pt, pandas as pd
-from _plotly_future_ import v4_subplots
+# from _plotly_future_ import v4_subplots
 from plotly import graph_objs as go
 from plotly.subplots import make_subplots
 import plotly.io as pio
@@ -11,7 +11,7 @@ from pathlib import Path
 from itertools import product
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.mixture import GaussianMixture
-
+# os.chdir(r"C:\Users\jeff\Desktop\Centrillion\cen_work_material\Microarray\Summit.NPCallAnalyzer")
 from imgproc_utils import quantile_norm, auto_contrast
 from npcall_viz import visualize_npcall_distribution, visualize_npcall_degrade
 from bg_ann import polyt_chrome_ann, AM1_AM3_AM5_ann

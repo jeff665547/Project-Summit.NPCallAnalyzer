@@ -1,12 +1,12 @@
 {
-    "summit_grid": "C:/Git/Summit.Grid_v1.0.8/bin/summit-app-grid.exe",
-    "import_dir": "C:/Git/data/1NJE198-15",
-    "export_dir": "C:/Git/results",
-    "auto_open": true,
+    "summit_grid": "A:/jeff/CFDA/CFDA-20191120/summit-grid-CFDA/bin/summit-app-grid.exe",
+    "import_dir": "C:/Users/jeff/Desktop/Input",
+    "export_dir": "C:/Users/jeff/Desktop/results",
+    "auto_open": false,
     "font_size": 16,
     "annotation": {
         "banff": {
-            "path": "C:/Git/data/Cent_M015_C88_annot.tab",
+            "path": "C:/Users/jeff/Desktop/result/Cent_M015_C88_annot.tab",
             "cols": {
                 "probe_seq_5p": "seq",
                 "ref": "ref"

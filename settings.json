@@ -1,7 +1,7 @@
 {
     "summit_grid": "A:/jeff/CFDA/CFDA-20191120/summit-grid-CFDA/bin/summit-app-grid.exe",
-    "import_dir": "C:/Users/jeff/Desktop/GMMEM",
-    "export_dir": "C:/Users/jeff/Desktop/result",
+    "import_dir": "C:/Users/jeff/Desktop",
+    "export_dir": "C:/Users/jeff/Desktop/results",
     "auto_open": false,
     "font_size": 16,
     "annotation": {
@@ -13,7 +13,7 @@
             }
         },
         "yz01": {
-            "path": "C:/Users/jeff/Desktop/result/YZ-01_np_annot.tab",
+            "path": "C:/Git/data/YZ-01_np_annot.tab",
             "cols": {
                 "final_probe_seq": "seq",
                 "REF": "ref"

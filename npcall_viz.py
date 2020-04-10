@@ -34,6 +34,35 @@ def calculate_decision_function(inputs, means, covariances):
 
     return scores, np.array(probs)
 
+# Calculate the tangent line border for the ellipse
+def calculate_ellipse_tangent_line(x, y, width, height, angle):
+    
+    width_radius = width/2
+    height_radius = height/2
+    rad = (angle/180)*np.pi
+    
+    hline_yvalue = y + ((height_radius*np.cos(rad))**2 
+                            + (width_radius*np.sin(rad))**2)**(1/2)
+    vline_xvalue = x + ((width_radius*np.cos(rad))**2 
+                            + (height_radius*np.sin(rad))**2)**(1/2)
+    
+    return(hline_yvalue, vline_xvalue)
+
+# Draw the tangent line for the ellipse
+def draw_ellipse_tangent(ax, center_x, center_y, width, height, 
+                         angle, axis, color = 'grey'):
+    
+    if axis == 0:
+        thresh = calculate_ellipse_tangent_line(center_x, center_y, width, height,
+                                                angle)[0]
+        ax.axhline(y = thresh, c = color, ls = ":", lw = 2)
+        
+    elif axis == 1:
+        thresh = calculate_ellipse_tangent_line(center_x, center_y, width, height,
+                                                angle)[1]
+        ax.axvline(x = thresh, c = color, ls = ":", lw = 2)
+    
+    return ax, thresh
 
 #TODO
 # configurable xylimits: { auto, manual } x { x, y } x { min, max }
@@ -107,11 +136,13 @@ def visualize_npcall_distribution(
     _, zz = calculate_decision_function(tt, means, covariances)
     cs = ax.contour(xx, yy, zz.reshape(size), [margin[0], 0.5, margin[1]], alpha = 0.75, colors = 'k')
     ax.clabel(cs, fontsize = 10)
-    
+
     # draw Gaussian models
     stdevs  = []
     vectors = []
     indexes = np.argsort([ np.arctan2(*mean[::-1]) for mean in means ])
+    axis = [1, 0] # (*) used in drawing the tangent line of the ellipse.
+    tangent_value = []
     for mean, covariance, idx in zip(means, covariances, indexes):
         eigvals, eigvecs = np.linalg.eig(covariance)
         indexes = eigvals.argsort()[::-1]
@@ -130,6 +161,18 @@ def visualize_npcall_distribution(
                 fill   = False,
                 edgecolor = labels[idx][1]
             ))
+            ax, tan_val = draw_ellipse_tangent(
+                    ax       = ax, 
+                    center_x = mean[0], 
+                    center_y = mean[1], 
+                    width    = np.sqrt(eigvals[0] * factor) * 2, 
+                    height   = np.sqrt(eigvals[1] * factor) * 2,
+                    angle    = np.degrees(np.arctan2(*eigvecs[::-1,0])), 
+                    axis     = axis[idx], 
+                    color    = labels[idx][1]
+                    )
+            tangent_value.append(tan_val)
+            
         for diff in (np.sqrt(eigvals) * eigvecs).transpose():
             ax.add_patch(FancyArrowPatch(
                 posA = mean,
@@ -169,6 +212,12 @@ def visualize_npcall_distribution(
         good_at = np.count_nonzero(at > (cg.mean() + 2 * cg.std())) / len(at)
         good_cg = np.count_nonzero(cg < (at.mean() - 2 * at.std())) / len(cg)
     
+    # calculate snowy noise rate (*)
+    snowy_temp = inputs[errors] > np.array(tangent_value)
+    out_tangent_temp = inputs > np.array(tangent_value)
+    snowy = list(map(lambda x: x[0] & x[1], snowy_temp))
+    out_tangent = list(map(lambda x: x[0] | x[1], snowy_temp))
+    snowy_rate = sum(snowy)/sum(out_tangent)
     
     ax.text(
         xmax * (1 - 0.985) + 0.985 * xmin,
@@ -185,6 +234,7 @@ def visualize_npcall_distribution(
             'Mean.1 = {:.0f}, {:.0f}',
             'Stdev.0 = {:.2f}',
             'Stdev.1 = {:.2f}',
+            'Snowy rate = {:.2f}',
         ]).format(
             (1 - sum(nocalls) / len(inputs)) * 100,
             *accuracies,
@@ -193,7 +243,8 @@ def visualize_npcall_distribution(
             w.dot(means[0] - means[1]) ** 2 / w.dot(covariances.sum(axis = 0)).dot(w),
             2 ** means[0][0], 2 ** means[0][1],
             2 ** means[1][0], 2 ** means[1][1],
-            *stdevs
+            *stdevs,
+            snowy_rate,
         ),
         linespacing = 1.5,
         ha = 'left',
@@ -310,6 +361,7 @@ def visualize_npcall_degrade(inputs,
                 fill   = False,
                 edgecolor = labels[idx][1]
             ))
+            
         for diff in (np.sqrt(eigvals) * eigvecs).transpose():
             ax.add_patch(FancyArrowPatch(
                 posA = mean,
@@ -364,5 +416,4 @@ def visualize_npcall_degrade(inputs,
     fig.savefig(str(export_path), dpi = 200)
     # fig.show()
     pt.close(fig)
-    
     
