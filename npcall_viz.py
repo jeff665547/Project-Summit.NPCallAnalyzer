@@ -53,12 +53,14 @@ def draw_ellipse_tangent(ax, center_x, center_y, width, height,
                          angle, axis, color = 'grey'):
     
     if axis == 0:
-        thresh = calculate_ellipse_tangent_line(center_x, center_y, width, height,
+        thresh = calculate_ellipse_tangent_line(center_x, center_y, 
+                                                width, height,
                                                 angle)[0]
         ax.axhline(y = thresh, c = color, ls = ":", lw = 2)
         
     elif axis == 1:
-        thresh = calculate_ellipse_tangent_line(center_x, center_y, width, height,
+        thresh = calculate_ellipse_tangent_line(center_x, center_y, 
+                                                width, height,
                                                 angle)[1]
         ax.axvline(x = thresh, c = color, ls = ":", lw = 2)
     
@@ -216,7 +218,7 @@ def visualize_npcall_distribution(
     snowy_temp = inputs[errors] > np.array(tangent_value)
     out_tangent_temp = inputs > np.array(tangent_value)
     snowy = list(map(lambda x: x[0] & x[1], snowy_temp))
-    out_tangent = list(map(lambda x: x[0] | x[1], snowy_temp))
+    out_tangent = list(map(lambda x: x[0] | x[1], out_tangent_temp))
     snowy_rate = sum(snowy)/sum(out_tangent)
     
     ax.text(
