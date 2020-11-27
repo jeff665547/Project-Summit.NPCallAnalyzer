@@ -707,7 +707,7 @@ if __name__ == '__main__':
     try:
         win = tk.Tk()
         win.title('SUMMIT Image Data Analyzer')
-        app = Application(win, './settings.json')
+        app = Application(win, './resource/settings.json')
         app.mainloop()
     except Exception:
         traceback.print_exception(*sys.exc_info())

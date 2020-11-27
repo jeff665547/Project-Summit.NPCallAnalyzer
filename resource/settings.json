@@ -7,6 +7,7 @@
     "annotation": {
         "banff": {
             "path": "C:/Users/jeff/Desktop/result/Cent_M015_C88_annot.tab",
+            "annot_convertion": true,
             "cols": {
                 "probe_seq_5p": "seq",
                 "ref": "ref"
@@ -14,6 +15,15 @@
         },
         "yz01": {
             "path": "C:/Git/data/YZ-01_np_annot.tab",
+            "annot_convertion": false,
+            "cols": {
+                "final_probe_seq": "seq",
+                "REF": "ref"
+            }
+        },
+        "westlake": {
+            "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Summit.NPCallAnalyzer/annotation/probe_annotation_allcols_final_onlynp.tab",
+            "annot_convertion": true,
             "cols": {
                 "final_probe_seq": "seq",
                 "REF": "ref"

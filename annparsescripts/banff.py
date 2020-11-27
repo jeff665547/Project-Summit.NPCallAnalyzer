@@ -1,8 +1,14 @@
+import json
 import numpy as np
 import pandas as pd
-import json
-import os
+import utils.path as sipath
+import utils.config as siconfig
 
+AM_cell_num = 28
+
+jchip = siconfig.get_jchip("banff")
+marker_row_num = siconfig.get_chip_marker_num(jchip)["x"]
+marker_col_num = siconfig.get_chip_marker_num(jchip)["y"]
 
 def polyt_chrome_ann():
         
@@ -67,8 +73,6 @@ def polyt_chrome_ann():
     bg_ann["yz01"] = yz01_bg_ann
     
     return bg_ann
-
-
 
 def AM1_AM3_AM5_ann():
     x = np.zeros(28*7*7, int)
@@ -142,4 +146,3 @@ def AM1_AM3_AM5_ann():
     AM_ann['yz01'] = yz01_AM_ann
     
     return AM_ann
-
