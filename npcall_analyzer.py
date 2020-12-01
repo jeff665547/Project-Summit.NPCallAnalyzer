@@ -403,7 +403,6 @@ class Application(tk.Frame):
                 print('  -', 'merge channels')
                 columns = ['x', 'y', 'mean']
                 path = import_dir / 'grid' / 'channels' / '{}' / 'heatmap.csv'
-                print(channels)
                 df = pd.merge(
                     pd.read_csv(str(path).format(channels[1]), usecols = columns),
                     pd.read_csv(str(path).format(channels[2]), usecols = columns),
