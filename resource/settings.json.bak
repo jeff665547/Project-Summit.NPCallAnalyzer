@@ -17,8 +17,8 @@
             "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Summit.NPCallAnalyzer/resource/YZ-01_np_annot.tab",
             "annot_parse_script": "annparsescripts.yz01",
             "cols": {
-                "probe_seq_5p": "seq",
-                "ref": "ref"
+                "final_probe_seq": "seq",
+                "REF": "ref"
             }
         },
         "westlake": {
