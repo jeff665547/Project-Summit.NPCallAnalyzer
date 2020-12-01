@@ -1,32 +1,32 @@
 {
     "summit_grid": "A:/jeff/CFDA/CFDA-20191120/summit-grid-CFDA/bin/summit-app-grid.exe",
-    "import_dir": "C:/Users/jeff/Desktop",
+    "import_dir": "E:/Data/WestLake_NPCall/X1B-1125-TW-6_Westlake_1NJK899-18",
     "export_dir": "C:/Users/jeff/Desktop/results",
     "auto_open": false,
     "font_size": 16,
     "annotation": {
         "banff": {
-            "path": "C:/Users/jeff/Desktop/result/Cent_M015_C88_annot.tab",
-            "annot_convertion": true,
+            "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Summit.NPCallAnalyzer/resource/banff_C77_annot.tab",
+            "annot_parse_script": "annparsescripts.banff",
             "cols": {
                 "probe_seq_5p": "seq",
                 "ref": "ref"
             }
         },
         "yz01": {
-            "path": "C:/Git/data/YZ-01_np_annot.tab",
-            "annot_convertion": false,
+            "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Summit.NPCallAnalyzer/resource/YZ-01_np_annot.tab",
+            "annot_parse_script": "annparsescripts.yz01",
             "cols": {
-                "final_probe_seq": "seq",
-                "REF": "ref"
+                "probe_seq_5p": "seq",
+                "ref": "ref"
             }
         },
         "westlake": {
-            "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Summit.NPCallAnalyzer/annotation/probe_annotation_allcols_final_onlynp.tab",
-            "annot_convertion": true,
+            "path": "C:/Users/jeff/Desktop/Centrillion/cen_work_material/Summit.NPCallAnalyzer/resource/westlake_np_annot.tab",
+            "annot_parse_script": "annparsescripts.westlake",
             "cols": {
-                "final_probe_seq": "seq",
-                "REF": "ref"
+                "probe_seq_5p": "seq",
+                "ref": "ref"
             }
         }
     }

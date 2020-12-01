@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, os, traceback, json, csv
+import sys, os, traceback, json, csv, importlib
 import subprocess, concurrent.futures as cf
 import tkinter as tk, tkfilebrowser as tkbrowser
 import numpy as np, matplotlib.pyplot as pt, pandas as pd
@@ -14,7 +14,6 @@ from sklearn.mixture import GaussianMixture
 # os.chdir(r"C:\Users\jeff\Desktop\Centrillion\cen_work_material\Microarray\Summit.NPCallAnalyzer")
 from imgproc_utils import quantile_norm, auto_contrast
 from npcall_viz import visualize_npcall_distribution, visualize_npcall_degrade
-from bg_ann import polyt_chrome_ann, AM1_AM3_AM5_ann
 from bgann_analysis import each_chip_statistics, each_chip_plots
 
 colorscale = {
@@ -372,8 +371,11 @@ class Application(tk.Frame):
         
         annots = {}
         bg_annots = {}
+        configs = {}
         
         print('for each sample')
+        with open(self.config_file) as f:
+            configs = json.load(f)
         with open(str(export_dir / 'npcall.csv'), 'w', newline = '') as f:
             writer = csv.writer(f)
             for import_dir in import_dirs:
@@ -386,23 +388,22 @@ class Application(tk.Frame):
                 
                 print('  -', 'get sample information')
                 chip_name, chip_shape, channels = This.get_sample_info(import_dir)
+
+                print('  -', 'load annotation parsing script')
+                anno_parse_script = configs["annotation"][chip_name]["annot_parse_script"]
+                script = importlib.import_module(anno_parse_script)
                 
                 if chip_name not in annots:
-                    print('  -', 'load annotations')
-                    with open(self.config_file) as f:
-                        opts = json.load(f)
-                        info = opts['annotation'][chip_name]
-                        columns = ['probe_id', 'x', 'y'] + list(info['cols'].keys())
-                        annot = pd.read_csv(info['path'], usecols = columns)
-                        annot = annot.rename(columns = info['cols'])
-                        annot.y = chip_shape[1] - annot.y - 1
-                        annots[chip_name] = annot
+                    print('  -', 'load annotations')    
+                    annot = script.probe_ann()
+                    annots[chip_name] = annot
                 else:
                     annot = annots[chip_name]
                 
                 print('  -', 'merge channels')
                 columns = ['x', 'y', 'mean']
                 path = import_dir / 'grid' / 'channels' / '{}' / 'heatmap.csv'
+                print(channels)
                 df = pd.merge(
                     pd.read_csv(str(path).format(channels[1]), usecols = columns),
                     pd.read_csv(str(path).format(channels[2]), usecols = columns),
@@ -416,9 +417,7 @@ class Application(tk.Frame):
                     df.loc[:, columns] = quantile_norm(df[columns].values)
                 
                 print('  -', 'fetch NP probe annotations')
-                annot_np = annot.loc[annot.probe_id.str.contains('CEN-NP')].copy(True)
-                annot_np.loc[(annot_np.ref == 'C') | (annot_np.ref == 'G'), 'actual'] = 'CG'
-                annot_np.loc[(annot_np.ref == 'A') | (annot_np.ref == 'T'), 'actual'] = 'AT'
+                annot_np = script.NP_probe_ann(annots[chip_name])
                 
                 print('  -', 'fetch NP probe intensities')
                 keys = ['x','y']
@@ -426,16 +425,9 @@ class Application(tk.Frame):
                 
                 print('  -', 'fetch AM1, AM3 (AM5), Chrome, PolyT probe annotations')
                 if chip_name not in bg_annots:
-                    with open(self.config_file) as f:
-                        opts = json.load(f)
-                        file_path = opts['annotation']['banff']['path'].split("/")
-                        file_path.pop()
-                        file_path = '/'.join(file_path)
-                
-                    p_c_ann = polyt_chrome_ann()[chip_name]
-                    am_ann = AM1_AM3_AM5_ann()[chip_name]
-                    bg_annot = dict(PolyT_Chrome = p_c_ann, AM = am_ann)
-                    
+                    p_c_ann = script.polyt_chrome_ann()
+                    am_ann = script.AM1_AM3_AM5_ann()
+                    bg_annot = dict(PolyT_Chrome = p_c_ann, AM = am_ann)                    
                     bg_annots[chip_name] = bg_annot
                 
                 else:
@@ -454,7 +446,7 @@ class Application(tk.Frame):
 
                 print('  -', 'export analysis for AM1, AM3 (AM5), Chrome, PolyT probes')
                 each_chip_plots(All = all_df, path_to_output = output_dir, chip_name = chip_name)
-                each_chip_statistics(All = all_df, path_to_output = output_dir, chip_name = chip_name)                
+                each_chip_statistics(All = all_df, path_to_output = output_dir, chip_name = chip_name)
                 
                 if self.flags['QN/NP'].get() == 1:
                     print('  -', 'apply quantile normalization to NP probes')
@@ -624,6 +616,9 @@ class Application(tk.Frame):
     
     def apply_cross_analysis(self, import_dirs):
         This = type(self)
+        configs = {}
+        with open(self.config_file) as f:
+            configs = json.load(f)
         import_dirs = list(import_dirs)
         export_dir  = Path(self.export_dir['text'])
         if len(import_dirs) == 0:
@@ -631,15 +626,13 @@ class Application(tk.Frame):
         
         print('get sample information')
         chip_name, chip_shape, channels = This.get_sample_info(import_dirs[0])
-        
+
+        print('load annotation parsing script')
+        anno_parse_script = configs["annotation"][chip_name]["annot_parse_script"]
+        script = importlib.import_module(anno_parse_script)
+
         print('load annotations')
-        with open(self.config_file) as f:
-            opts = json.load(f)
-            info = opts['annotation'][chip_name]
-            columns = ['probe_id', 'x', 'y'] + list(info['cols'].keys())
-            annot = pd.read_csv(info['path'], usecols = columns)
-            annot = annot.rename(columns = info['cols'])
-            annot.y = chip_shape[1] - annot.y - 1
+        annot = script.probe_ann()
         
         print('export topography')
         keys = ['y', 'x']
@@ -665,10 +658,8 @@ class Application(tk.Frame):
         )
         
         print('  -', 'fetch NP probe annotations')
-        annot_np = annot.loc[annot.probe_id.str.contains('CEN-NP')].copy(True)
-        annot_np.loc[(annot_np.ref == 'A') | (annot_np.ref == 'T'), 'actual'] = 'AT'
-        annot_np.loc[(annot_np.ref == 'C') | (annot_np.ref == 'G'), 'actual'] = 'CG'
-        
+        annot_np = script.NP_probe_ann(annots[chip_name])
+
         print('  -', 'merge npcall results with NP probe annotations')
         df = pd.concat([
             pd.read_csv(str(import_dir / 'indiv' / 'ps.csv'))

@@ -20,8 +20,24 @@ def get_chip_arucoid(jchip: dict):
 
 def get_chip_marker_num(jchip: dict):
     chip_marker_num = dict()
-    chip_marker_num.update({"x", jchip["shooting_marker"]['position_cl']['col']})
-    chip_marker_num.update({"y", jchip["shooting_marker"]['position_cl']['row']})
+    chip_marker_num.update({"r": jchip["shooting_marker"]['position_cl']['row']})
+    chip_marker_num.update({"c": jchip["shooting_marker"]['position_cl']['col']})
     return chip_marker_num
 
-def get_chip_
+def get_chip_probe_num(jchip: dict):
+    chip_probe_num = dict()
+    chip_probe_num.update({"r": jchip["h_cl"]})
+    chip_probe_num.update({"c": jchip["w_cl"]})
+    return chip_probe_num
+
+def get_marker_size_probeunit(jchip: dict):
+    marker_size = dict()
+    marker_size.update({"r": jchip["shooting_marker"]['position_cl']["h"]})
+    marker_size.update({"c": jchip["shooting_marker"]['position_cl']["w"]})
+    return marker_size
+
+def get_marker_stride_probeunit(jchip: dict):
+    marker_stride = dict()
+    marker_stride.update({"r": jchip["shooting_marker"]['position_cl']["h_d"]})
+    marker_stride.update({"c": jchip["shooting_marker"]['position_cl']["w_d"]})
+    return marker_stride
