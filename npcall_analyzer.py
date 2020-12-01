@@ -658,7 +658,7 @@ class Application(tk.Frame):
         )
         
         print('  -', 'fetch NP probe annotations')
-        annot_np = script.NP_probe_ann(annots[chip_name])
+        annot_np = script.NP_probe_ann(annot)
 
         print('  -', 'merge npcall results with NP probe annotations')
         df = pd.concat([
