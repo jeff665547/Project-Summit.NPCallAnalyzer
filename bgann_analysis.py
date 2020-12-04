@@ -47,6 +47,8 @@ def each_chip_plots(All, path_to_output, chip_name):
         ch2_matrix = np.zeros((496, 496))
     elif(chip_name == "yz01"):
         ch2_matrix = np.zeros((1424, 1424))
+    elif(chip_name == "westlake"):
+        ch2_matrix = np.zeros((1424, 1424))
         
     for x, y, z in ch2.loc[:, ['x', 'y', 'mean_g']].values:
         ch2_matrix[int(y)][int(x)] = z
@@ -56,6 +58,9 @@ def each_chip_plots(All, path_to_output, chip_name):
         ch4_matrix = np.zeros((496, 496))
     elif(chip_name == "yz01"):
         ch4_matrix = np.zeros((1424, 1424))
+    elif(chip_name == "westlake"):
+        ch4_matrix = np.zeros((1424, 1424))
+        
     for x, y, z in ch4.loc[:, ['x', 'y', 'mean_r']].values:
         ch4_matrix[int(y)][int(x)] = z
     
@@ -85,10 +90,14 @@ def each_chip_statistics(All, path_to_output, chip_name):
         ch2_matrix = np.empty((496, 496))
     elif(chip_name == "yz01"):
         ch2_matrix = np.empty((1424, 1424))
+    elif(chip_name == "westlake"):
+        ch2_matrix = np.empty((1424, 1424))
     ch2_matrix[:] = np.nan
     if(chip_name == "banff"):
         ch4_matrix = np.empty((496, 496))
     elif(chip_name == "yz01"):
+        ch4_matrix = np.empty((1424, 1424))
+    elif(chip_name == "westlake"):
         ch4_matrix = np.empty((1424, 1424))
     ch4_matrix[:] = np.nan
     
