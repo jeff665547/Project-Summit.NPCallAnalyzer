@@ -11,7 +11,7 @@ from pathlib import Path
 from itertools import product
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.mixture import GaussianMixture
-# os.chdir(r"C:\Users\jeff\Desktop\Centrillion\cen_work_material\Microarray\Summit.NPCallAnalyzer")
+# os.chdir(r"C:\Users\jeff\Desktop\Summit.NPCallAnalyzer")
 from imgproc_utils import quantile_norm, auto_contrast
 from npcall_viz import visualize_npcall_distribution, visualize_npcall_degrade
 from bgann_analysis import each_chip_statistics, each_chip_plots
@@ -421,6 +421,7 @@ class Application(tk.Frame):
                 print('  -', 'fetch NP probe intensities')
                 keys = ['x','y']
                 ps = pd.merge(annot_np, df, on = keys)
+                org_ps = ps.copy(True)
                 
                 print('  -', 'fetch AM1, AM3 (AM5), Chrome, PolyT probe annotations')
                 if chip_name not in bg_annots:
@@ -479,6 +480,7 @@ class Application(tk.Frame):
                 model = LinearDiscriminantAnalysis()
                 model.fit(inputs, ps['actual'].values)
                 outputs = model.predict(inputs)
+                org_ps.loc[:, 'predicted'] = outputs
                 ps.loc[:, 'predicted'] = outputs
                 ps.loc[:, 'num_fails'] = np.array(outputs != ps['actual'].values, dtype = int)
                 ps.loc[:, 'confidence'] = np.abs(inputs.dot(model.coef_.transpose())[:,0] + model.intercept_)
@@ -590,6 +592,10 @@ class Application(tk.Frame):
                         fontsize = self.font_size
                     )
                     path = output_dir / 'scatter.{}.degrade.png'.format(key)
+                    # 
+                    error = outputs != targets
+                    org_ps.to_csv(f"{str(output_dir)}/all.csv", index = True)
+                    org_ps[error].to_csv(f"{str(output_dir)}/misclassified.csv", index = True)
                     visualize_npcall_degrade(
                         inputs,
                         outputs,
