@@ -136,6 +136,7 @@ class SummitGrid:
             str(self.binary_path),
             '-i', str(import_dir),
             '-o', str(export_dir),
+            '-r', 'csv_probe_list,cen_file',
             '-n', '3',
             # '-d', '6',
             '--marker_append',
